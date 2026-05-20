@@ -45,8 +45,13 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
   uint8_t header[frame_protocol::HEADER_SIZE];
   frame_protocol::buildHeader(header, sequence_++, static_cast<uint32_t>(frame->len), millis());
 
+  uint8_t cameraId[frame_protocol::CAMERA_ID_SIZE];
+  frame_protocol::buildCameraId(cameraId, app_config::CAMERA_ID);
+
   const uint32_t startedAt = millis();
-  const bool sent = sendAll(header, sizeof(header)) && sendAll(frame->buf, frame->len);
+  const bool sent = sendAll(header, sizeof(header)) &&
+                    sendAll(cameraId, sizeof(cameraId)) &&
+                    sendAll(frame->buf, frame->len);
   const uint32_t elapsed = millis() - startedAt;
 
   if (!sent) {
@@ -56,7 +61,8 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
   }
 
   resetBackoff();
-  Serial.printf("Sent frame seq=%lu bytes=%u elapsed=%lums\n",
+  Serial.printf("Sent frame camera=%lu seq=%lu bytes=%u elapsed=%lums\n",
+                static_cast<unsigned long>(app_config::CAMERA_ID),
                 static_cast<unsigned long>(sequence_ - 1),
                 static_cast<unsigned>(frame->len),
                 static_cast<unsigned long>(elapsed));

@@ -21,6 +21,7 @@ void cameraTask(void *parameter)
     if (frame == nullptr) {
       Serial.println("Camera capture failed");
       vTaskDelay(pdMS_TO_TICKS(250));
+      lastWake = xTaskGetTickCount();
       continue;
     }
 

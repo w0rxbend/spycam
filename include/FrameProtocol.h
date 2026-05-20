@@ -5,8 +5,9 @@
 
 namespace frame_protocol {
 
-constexpr uint32_t MAGIC_JPGS = 0x4A504753;
+constexpr uint32_t MAGIC_JPGD = 0x4A504744;
 constexpr size_t HEADER_SIZE = 16;
+constexpr size_t CAMERA_ID_SIZE = 4;
 
 inline void writeU32Be(uint8_t *dst, uint32_t value)
 {
@@ -18,10 +19,15 @@ inline void writeU32Be(uint8_t *dst, uint32_t value)
 
 inline void buildHeader(uint8_t *header, uint32_t sequence, uint32_t payloadLen, uint32_t timestampMs)
 {
-  writeU32Be(header + 0, MAGIC_JPGS);
+  writeU32Be(header + 0, MAGIC_JPGD);
   writeU32Be(header + 4, sequence);
   writeU32Be(header + 8, payloadLen);
   writeU32Be(header + 12, timestampMs);
+}
+
+inline void buildCameraId(uint8_t *dst, uint32_t cameraId)
+{
+  writeU32Be(dst, cameraId);
 }
 
 } // namespace frame_protocol

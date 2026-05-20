@@ -10,6 +10,7 @@ constexpr const char *WIFI_PASSWORD = "<PASSWORD>";
 
 constexpr const char *SERVER_HOST = "192.168.1.187";
 constexpr uint16_t SERVER_PORT = 5000;
+constexpr uint32_t CAMERA_ID = 0;
 
 constexpr framesize_t CAMERA_FRAME_SIZE = FRAMESIZE_VGA;
 constexpr int CAMERA_JPEG_QUALITY = 12;

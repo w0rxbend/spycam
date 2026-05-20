@@ -30,7 +30,7 @@ void test_build_header_encodes_protocol_fields()
 
   frame_protocol::buildHeader(header, 42, 123456, 987654321);
 
-  TEST_ASSERT_EQUAL_UINT32(frame_protocol::MAGIC_JPGS, readU32Be(header + 0));
+  TEST_ASSERT_EQUAL_UINT32(frame_protocol::MAGIC_JPGD, readU32Be(header + 0));
   TEST_ASSERT_EQUAL_UINT32(42, readU32Be(header + 4));
   TEST_ASSERT_EQUAL_UINT32(123456, readU32Be(header + 8));
   TEST_ASSERT_EQUAL_UINT32(987654321, readU32Be(header + 12));
@@ -41,6 +41,15 @@ void test_build_header_is_exactly_16_bytes()
   TEST_ASSERT_EQUAL_UINT(16, frame_protocol::HEADER_SIZE);
 }
 
+void test_build_camera_id_encodes_big_endian_id()
+{
+  uint8_t bytes[frame_protocol::CAMERA_ID_SIZE] = {};
+
+  frame_protocol::buildCameraId(bytes, 17);
+
+  TEST_ASSERT_EQUAL_UINT32(17, readU32Be(bytes));
+}
+
 } // namespace
 
 int main()
@@ -49,5 +58,6 @@ int main()
   RUN_TEST(test_write_u32_be_encodes_most_significant_byte_first);
   RUN_TEST(test_build_header_encodes_protocol_fields);
   RUN_TEST(test_build_header_is_exactly_16_bytes);
+  RUN_TEST(test_build_camera_id_encodes_big_endian_id);
   return UNITY_END();
 }
