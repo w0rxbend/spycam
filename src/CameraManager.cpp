@@ -2,9 +2,14 @@
 
 #include "AppConfig.h"
 #include "CameraPins.h"
+#include "SerialLog.h"
+
+#define CAMERA_MODEL_AI_THINKER
 
 bool CameraManager::begin()
 {
+  serial_log::info("Initializing camera");
+
   camera_config_t config = {};
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -33,9 +38,15 @@ bool CameraManager::begin()
   config.grab_mode = CAMERA_GRAB_LATEST;
   config.fb_location = hasPsram ? CAMERA_FB_IN_PSRAM : CAMERA_FB_IN_DRAM;
 
+  serial_log::info("Camera config: frame_size=%d quality=%d fb_count=%d psram=%s",
+                    config.frame_size,
+                    config.jpeg_quality,
+                    config.fb_count,
+                    hasPsram ? "yes" : "no");
+
   const esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed: 0x%x\n", err);
+    serial_log::error("Camera init failed: 0x%x", err);
     return false;
   }
 
@@ -45,11 +56,11 @@ bool CameraManager::begin()
     sensor->set_quality(sensor, app_config::CAMERA_JPEG_QUALITY);
   }
 
-  Serial.printf("Camera ready: frame_size=%d quality=%d fb_count=%d psram=%s\n",
-                config.frame_size,
-                config.jpeg_quality,
-                config.fb_count,
-                hasPsram ? "yes" : "no");
+  serial_log::info("Camera ready: frame_size=%d quality=%d fb_count=%d psram=%s",
+                   config.frame_size,
+                   config.jpeg_quality,
+                   config.fb_count,
+                   hasPsram ? "yes" : "no");
   return true;
 }
 

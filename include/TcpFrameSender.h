@@ -26,4 +26,7 @@ private:
   WiFiClient client_;
   uint32_t sequence_;
   uint32_t backoffMs_;
+  uint32_t sentFrames_;
+  uint32_t failedSends_;
+  uint32_t lastStatusAt_;
 };

@@ -1,5 +1,7 @@
 #include "LatestFrameSlot.h"
 
+#include "SerialLog.h"
+
 LatestFrameSlot::LatestFrameSlot() : mutex_(nullptr), frameReady_(nullptr), frame_(nullptr)
 {
 }
@@ -15,6 +17,7 @@ void LatestFrameSlot::put(camera_fb_t *frame)
 {
   if (frame == nullptr || mutex_ == nullptr || frameReady_ == nullptr) {
     if (frame != nullptr) {
+      serial_log::warn("Dropping frame because latest-frame slot is not initialized");
       esp_camera_fb_return(frame);
     }
     return;
@@ -27,6 +30,7 @@ void LatestFrameSlot::put(camera_fb_t *frame)
   xSemaphoreGive(mutex_);
 
   if (staleFrame != nullptr) {
+    serial_log::debug("Dropping stale frame before sender consumed it");
     esp_camera_fb_return(staleFrame);
   }
 
