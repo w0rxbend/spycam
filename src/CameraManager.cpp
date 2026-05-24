@@ -54,6 +54,11 @@ bool CameraManager::begin()
   if (sensor != nullptr) {
     sensor->set_framesize(sensor, config.frame_size);
     sensor->set_quality(sensor, app_config::CAMERA_JPEG_QUALITY);
+    const auto r = app_config::CAMERA_ROTATION;
+    sensor->set_vflip(sensor,
+      r == app_config::CameraRotation::FlipV || r == app_config::CameraRotation::Rotate180 ? 1 : 0);
+    sensor->set_hmirror(sensor,
+      r == app_config::CameraRotation::FlipH || r == app_config::CameraRotation::Rotate180 ? 1 : 0);
   }
 
   serial_log::info("Camera ready: frame_size=%d quality=%d fb_count=%d psram=%s",

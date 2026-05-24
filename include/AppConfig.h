@@ -34,6 +34,13 @@ constexpr const char *WIFI_PASSWORD_VALUE = "<PASSWORD>";
 
 namespace app_config {
 
+enum class CameraRotation : uint8_t {
+  None      = 0,
+  FlipV     = 1,
+  FlipH     = 2,
+  Rotate180 = 3,
+};
+
 constexpr const char *WIFI_SSID = app_config_credentials::WIFI_SSID_VALUE;
 constexpr const char *WIFI_PASSWORD = app_config_credentials::WIFI_PASSWORD_VALUE;
 
@@ -50,6 +57,7 @@ constexpr int CAMERA_JPEG_QUALITY = 12;
 constexpr int CAMERA_FB_COUNT = 2;
 constexpr framesize_t CAMERA_FRAME_SIZE_NO_PSRAM = FRAMESIZE_QVGA;
 constexpr int CAMERA_FB_COUNT_NO_PSRAM = 1;
+constexpr CameraRotation CAMERA_ROTATION = CameraRotation::Rotate180;
 
 constexpr uint32_t TARGET_FPS = 8;
 constexpr uint32_t FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
