@@ -46,7 +46,7 @@ constexpr const char *WIFI_PASSWORD = app_config_credentials::WIFI_PASSWORD_VALU
 
 constexpr const char *SERVER_HOST = "192.168.1.200";
 constexpr uint16_t SERVER_PORT = 5000;
-constexpr uint32_t CAMERA_ID = 5;
+constexpr uint32_t CAMERA_ID = 1;
 
 constexpr uint32_t SERIAL_BAUD = 115200;
 constexpr serial_log::Level LOG_LEVEL = serial_log::Level::Info;
@@ -57,7 +57,7 @@ constexpr int CAMERA_JPEG_QUALITY = 12;
 constexpr int CAMERA_FB_COUNT = 2;
 constexpr framesize_t CAMERA_FRAME_SIZE_NO_PSRAM = FRAMESIZE_QVGA;
 constexpr int CAMERA_FB_COUNT_NO_PSRAM = 1;
-constexpr CameraRotation CAMERA_ROTATION = CameraRotation::Rotate180;
+constexpr CameraRotation CAMERA_ROTATION = CameraRotation::None;
 
 constexpr uint32_t TARGET_FPS = 8;
 constexpr uint32_t FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
