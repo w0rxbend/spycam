@@ -19,7 +19,12 @@
      Example: 14 -> 18 -> 22.
   4. Reduce CAMERA_FB_COUNT to 1 if memory pressure is more important than capture
      smoothness. Two buffers can improve throughput but consume more RAM.
-  5. Keep the NO_PSRAM values conservative. Boards without PSRAM should use lower
+  5. Keep CAMERA_XCLK_FREQ_HZ at 20 MHz if camera probing fails with
+     ESP_ERR_NOT_FOUND. Some OV2640 modules will not initialize reliably with a
+     lower external clock.
+  6. Enable WIFI_SLEEP_ENABLED to reduce Wi-Fi power draw. This can add latency or
+     lower throughput, so disable it again if streaming becomes unreliable.
+  7. Keep the NO_PSRAM values conservative. Boards without PSRAM should use lower
      frame sizes and a single frame buffer to avoid allocation failures.
 
   The safest first change for throttling is usually TARGET_FPS. The safest first
@@ -33,18 +38,22 @@
 namespace app_config_credentials {
 
 #ifdef WIFI_SSID
-// Wi-Fi network name loaded from include/credentials.h when provided.
+// Possible values: any Wi-Fi SSID string defined as WIFI_SSID in credentials.h.
+// This is the network name the ESP32 will join.
 constexpr const char *WIFI_SSID_VALUE = WIFI_SSID;
 #else
-// Placeholder Wi-Fi network name used when include/credentials.h is missing.
+// Possible values: any Wi-Fi SSID string.
+// Placeholder used when credentials.h is missing; replace through credentials.h before flashing.
 constexpr const char *WIFI_SSID_VALUE = "<SSID>";
 #endif
 
 #ifdef WIFI_PASSWORD
-// Wi-Fi password loaded from include/credentials.h when provided.
+// Possible values: any Wi-Fi password string defined as WIFI_PASSWORD in credentials.h.
+// This is the password for WIFI_SSID_VALUE.
 constexpr const char *WIFI_PASSWORD_VALUE = WIFI_PASSWORD;
 #else
-// Placeholder Wi-Fi password used when include/credentials.h is missing.
+// Possible values: any Wi-Fi password string, or an empty string for open networks.
+// Placeholder used when credentials.h is missing; replace through credentials.h before flashing.
 constexpr const char *WIFI_PASSWORD_VALUE = "<PASSWORD>";
 #endif
 
@@ -60,7 +69,8 @@ constexpr const char *WIFI_PASSWORD_VALUE = "<PASSWORD>";
 
 namespace app_config {
 
-// Camera image orientation to apply after capture.
+// Possible values: None, FlipV, FlipH, Rotate180.
+// Selects the image orientation correction applied after camera initialization.
 enum class CameraRotation : uint8_t {
   // Leave the camera image as captured.
   None      = 0,
@@ -72,61 +82,94 @@ enum class CameraRotation : uint8_t {
   Rotate180 = 3,
 };
 
-// Wi-Fi network name used by the device.
+// Possible values: any Wi-Fi SSID string.
+// Loaded from credentials.h when present; used by WiFi.begin().
 constexpr const char *WIFI_SSID = app_config_credentials::WIFI_SSID_VALUE;
-// Wi-Fi password used by the device.
+// Possible values: any Wi-Fi password string, or an empty string for open networks.
+// Loaded from credentials.h when present; used by WiFi.begin().
 constexpr const char *WIFI_PASSWORD = app_config_credentials::WIFI_PASSWORD_VALUE;
 
-// IP address or hostname of the server that receives camera frames.
+// Possible values: IPv4 address like "192.168.1.200" or DNS name like "cam-server.local".
+// The ESP32 opens a TCP connection to this host and sends JPEG frames to it.
 constexpr const char *SERVER_HOST = "192.168.1.200";
-// TCP port on the server that receives camera frames.
+// Possible values: 1-65535; use the TCP port your frame receiver listens on.
+// Avoid ports already used by other services on the server.
 constexpr uint16_t SERVER_PORT = 5000;
-// Numeric camera identifier sent to the server so multiple cameras can be distinguished.
+// Possible values: 0-4294967295.
+// Sent with every frame so the server can distinguish multiple ESP32-CAM devices.
 constexpr uint32_t CAMERA_ID = 3;
 
-// Serial monitor baud rate for logs and diagnostics.
+// Possible values: common rates such as 9600, 57600, 115200, 230400, 460800, 921600.
+// Must match platformio.ini monitor_speed and your serial monitor setting.
 constexpr uint32_t SERIAL_BAUD = 115200;
-// Minimum log level printed to the serial monitor.
+// Possible values: serial_log::Level::Error, Warn, Info, Debug.
+// Lower-noise choices are Error/Warn; Debug prints the most detail and can slow serial output.
 constexpr serial_log::Level LOG_LEVEL = serial_log::Level::Info;
-// How often runtime status messages are printed.
+// Possible values: milliseconds greater than 0; examples: 1000, 5000, 30000.
+// Controls periodic status log frequency for camera and sender tasks.
 constexpr uint32_t STATUS_LOG_INTERVAL_MS = 5000;
 
-// Camera resolution used on boards with PSRAM. Lower this to reduce CPU, RAM, and Wi-Fi load.
+// Possible values include FRAMESIZE_QQVGA(160x120), QVGA(320x240), VGA(640x480),
+// SVGA(800x600), XGA(1024x768), SXGA(1280x1024), UXGA(1600x1200).
+// Used when PSRAM is available; lower sizes reduce RAM, CPU, Wi-Fi load, and brownout risk.
 constexpr framesize_t CAMERA_FRAME_SIZE = FRAMESIZE_VGA;
-// JPEG compression level. Lower numbers produce better quality/larger frames; higher numbers reduce size and load.
+// Possible values: usually 0-63 in the ESP32 camera driver.
+// Lower numbers mean better image quality and larger frames; higher numbers reduce size and load.
 constexpr int CAMERA_JPEG_QUALITY = 14;
-// Number of frame buffers with PSRAM. More buffers can improve smoothness but use more memory.
+// Possible values: usually 1 or 2 for ESP32-CAM.
+// 1 uses less RAM/current; 2 can improve capture smoothness but increases memory pressure.
 constexpr int CAMERA_FB_COUNT = 2;
-// Fallback camera resolution for boards without PSRAM.
+// Possible values: same FRAMESIZE_* values as CAMERA_FRAME_SIZE.
+// Used when PSRAM is not available; keep this conservative because frames are stored in internal RAM.
 constexpr framesize_t CAMERA_FRAME_SIZE_NO_PSRAM = FRAMESIZE_QVGA;
-// Fallback frame buffer count for boards without PSRAM.
+// Possible values: usually 1 for boards without PSRAM.
+// Higher values can fail allocation or destabilize the board when only internal RAM is available.
 constexpr int CAMERA_FB_COUNT_NO_PSRAM = 1;
-// Camera image rotation or flip correction.
+// Possible values: commonly 20000000; sometimes 10000000 works on specific modules.
+// 20 MHz is the most reliable OV2640 probe value; lower values can cause ESP_ERR_NOT_FOUND.
+constexpr int CAMERA_XCLK_FREQ_HZ = 20000000;
+// Possible values: CameraRotation::None, FlipV, FlipH, Rotate180.
+// Use this to correct an upside-down or mirrored mounted camera without changing server code.
 constexpr CameraRotation CAMERA_ROTATION = CameraRotation::None;
 
-// Target number of frames captured and sent per second. Lower this first if the ESP32 throttles.
-constexpr uint32_t TARGET_FPS = 8;
-// Delay between frame attempts, derived from TARGET_FPS.
+// Possible values: positive FPS values; do not set to 0 because FRAME_INTERVAL_MS divides by it.
+// Lower values reduce heat, current spikes, Wi-Fi bandwidth, and server load.
+constexpr uint32_t TARGET_FPS = 4;
+// Possible values: derived automatically from TARGET_FPS; do not edit directly unless needed.
+// Milliseconds between capture attempts, calculated as 1000 / TARGET_FPS.
 constexpr uint32_t FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
 
-// Maximum time to wait for Wi-Fi connection before retrying or reporting failure.
+// Possible values: true or false.
+// true enables Wi-Fi modem sleep to reduce power draw; false favors lower latency and throughput stability.
+constexpr bool WIFI_SLEEP_ENABLED = true;
+
+// Possible values: milliseconds greater than 0; examples: 5000, 15000, 30000.
+// Maximum time to wait for Wi-Fi association before backing off and retrying.
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
-// Maximum time to wait while opening a TCP connection to the server.
+// Possible values: milliseconds greater than 0; examples: 3000, 8000, 15000.
+// Maximum time to wait while opening the TCP connection to SERVER_HOST:SERVER_PORT.
 constexpr uint32_t TCP_CONNECT_TIMEOUT_MS = 8000;
-// Maximum time allowed for sending one frame to the server.
+// Possible values: milliseconds greater than 0; examples: 5000, 10000, 30000.
+// Maximum time allowed for sending one full frame before the connection is dropped and retried.
 constexpr uint32_t SEND_TIMEOUT_MS = 10000;
-// Initial reconnect delay after a connection failure.
+// Possible values: milliseconds greater than 0 and less than or equal to RECONNECT_BACKOFF_MAX_MS.
+// Initial delay after Wi-Fi or TCP failure; short values retry faster but use more power.
 constexpr uint32_t RECONNECT_BACKOFF_MIN_MS = 500;
-// Maximum reconnect delay after repeated connection failures.
+// Possible values: milliseconds greater than or equal to RECONNECT_BACKOFF_MIN_MS.
+// Maximum retry delay after repeated failures; longer values reduce retry spam and power use.
 constexpr uint32_t RECONNECT_BACKOFF_MAX_MS = 30000;
 
-// FreeRTOS stack size for the camera capture task.
+// Possible values: task stack sizes in bytes; examples: 4096, 6144, 8192.
+// Increase if the camera task overflows; decrease only if memory is tight and testing is stable.
 constexpr uint32_t CAMERA_TASK_STACK = 6144;
-// FreeRTOS stack size for the network sender task.
+// Possible values: task stack sizes in bytes; examples: 4096, 8192, 12288.
+// Network/TCP code often needs more stack than simple tasks; increase if sender crashes unexpectedly.
 constexpr uint32_t SENDER_TASK_STACK = 8192;
-// FreeRTOS priority for the camera capture task. Higher values run before lower-priority tasks.
+// Possible values: 0 to configMAX_PRIORITIES - 1; higher values run before lower-priority tasks.
+// Keep above the sender if capture timing is more important than immediate network sends.
 constexpr UBaseType_t CAMERA_TASK_PRIORITY = 2;
-// FreeRTOS priority for the network sender task. Lower than camera capture so capture stays responsive.
+// Possible values: 0 to configMAX_PRIORITIES - 1; higher values run before lower-priority tasks.
+// Kept below CAMERA_TASK_PRIORITY so capture stays responsive while sending happens in the background.
 constexpr UBaseType_t SENDER_TASK_PRIORITY = 1;
 
 } // namespace app_config

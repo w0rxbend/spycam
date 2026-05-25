@@ -29,7 +29,7 @@ bool CameraManager::begin()
   config.pin_sccb_scl = camera_pins::SIOC_GPIO_NUM;
   config.pin_pwdn = camera_pins::PWDN_GPIO_NUM;
   config.pin_reset = camera_pins::RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = app_config::CAMERA_XCLK_FREQ_HZ;
   config.pixel_format = PIXFORMAT_JPEG;
   const bool hasPsram = psramFound();
   config.frame_size = hasPsram ? app_config::CAMERA_FRAME_SIZE : app_config::CAMERA_FRAME_SIZE_NO_PSRAM;
