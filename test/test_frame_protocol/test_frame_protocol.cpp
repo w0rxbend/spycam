@@ -30,7 +30,7 @@ void test_build_header_encodes_protocol_fields()
 
   frame_protocol::buildHeader(header, 42, 123456, 987654321);
 
-  TEST_ASSERT_EQUAL_UINT32(frame_protocol::MAGIC_JPGD, readU32Be(header + 0));
+  TEST_ASSERT_EQUAL_HEX32(0x4A504744, readU32Be(header + 0)); // ASCII "JPGD"
   TEST_ASSERT_EQUAL_UINT32(42, readU32Be(header + 4));
   TEST_ASSERT_EQUAL_UINT32(123456, readU32Be(header + 8));
   TEST_ASSERT_EQUAL_UINT32(987654321, readU32Be(header + 12));
