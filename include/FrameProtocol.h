@@ -8,6 +8,10 @@ namespace frame_protocol {
 constexpr uint32_t MAGIC_JPGD = 0x4A504744;
 constexpr size_t HEADER_SIZE = 16;
 constexpr size_t CAMERA_ID_SIZE = 4;
+// Every frame is preceded by the header immediately followed by the camera id.
+// The header's length field counts the JPEG bytes only, so a receiver reads
+// PREFIX_SIZE bytes and then exactly payloadLen more.
+constexpr size_t PREFIX_SIZE = HEADER_SIZE + CAMERA_ID_SIZE;
 
 inline void writeU32Be(uint8_t *dst, uint32_t value)
 {

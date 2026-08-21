@@ -1,7 +1,7 @@
 #include "TcpFrameSender.h"
 
 #include "AppConfig.h"
-#include "FrameProtocol.h"
+#include "FrameWriter.h"
 #include "SerialLog.h"
 
 namespace {
@@ -53,16 +53,15 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
     return false;
   }
 
-  uint8_t header[frame_protocol::HEADER_SIZE];
-  frame_protocol::buildHeader(header, sequence_++, static_cast<uint32_t>(frame->len), millis());
+  frame_protocol::FrameMetadata meta;
+  meta.sequence = sequence_++;
+  meta.payloadLen = static_cast<uint32_t>(frame->len);
+  meta.timestampMs = millis();
+  meta.cameraId = app_config::CAMERA_ID;
 
-  uint8_t cameraId[frame_protocol::CAMERA_ID_SIZE];
-  frame_protocol::buildCameraId(cameraId, app_config::CAMERA_ID);
-
+  ClientSink sink(*this);
   const uint32_t startedAt = millis();
-  const bool sent = sendAll(header, sizeof(header)) &&
-                    sendAll(cameraId, sizeof(cameraId)) &&
-                    sendAll(frame->buf, frame->len);
+  const bool sent = frame_protocol::writeFrame(sink, meta, frame->buf);
   const uint32_t elapsed = millis() - startedAt;
 
   if (!sent) {
