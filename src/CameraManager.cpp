@@ -4,8 +4,6 @@
 #include "CameraPins.h"
 #include "SerialLog.h"
 
-#define CAMERA_MODEL_AI_THINKER
-
 bool CameraManager::begin()
 {
   serial_log::info("Initializing camera");
