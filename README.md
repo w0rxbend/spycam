@@ -12,6 +12,19 @@ The camera task captures JPEG frames directly from the ESP32 camera driver. The 
 
 The sender task owns all network I/O. It reconnects WiFi and TCP forever with exponential backoff, then resumes streaming from the newest available frame.
 
+### Source layout
+
+| File | Role |
+| --- | --- |
+| `src/main.cpp` | Composition root. The only file that reads `AppConfig.h`: it builds the settings structs, creates the two objects, and starts the two tasks. |
+| `include/AppConfig.h` | Every tunable value, plus a throttling guide for when the board cannot keep up. |
+| `CameraManager` | Owns the ESP32 camera driver. Takes a `camera::Settings`. |
+| `TcpFrameSender` | Owns Wi-Fi, the socket, reconnection, and backoff. Takes a `sender::Settings`. |
+| `LatestFrameSlot` | One-slot handoff between the two tasks. Holds at most one unsent frame. |
+| `FrameWriter.h` / `ByteSink.h` | The wire format, and the interface it writes to. No Arduino, no sockets, so the host tests exercise it directly. |
+
+`CameraManager` and `TcpFrameSender` receive their configuration at construction rather than reading globals, so each class states its own inputs and neither depends on `AppConfig.h`. Framing is separated from transport by `ByteSink`, which is what lets `test/test_frame_writer` verify the exact byte order a receiver sees without any hardware.
+
 ## Client-server protocol
 
 Transport is a long-lived raw TCP connection. There is no HTTP, websocket, JSON, delimiter, or text framing.
