@@ -45,7 +45,12 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
     return false;
   }
 
-  if (!ensureConnected()) {
+  // Non-blocking precondition only: never sleep in a reconnect backoff here,
+  // because the caller is holding a camera frame buffer while we run. The
+  // sender task's own ensureConnected() does the waiting, at a point where no
+  // buffer is checked out.
+  if (WiFi.status() != WL_CONNECTED || !client_.connected()) {
+    disconnect();
     return false;
   }
 
