@@ -22,8 +22,8 @@
   5. Keep CAMERA_XCLK_FREQ_HZ at 20 MHz if camera probing fails with
      ESP_ERR_NOT_FOUND. Some OV2640 modules will not initialize reliably with a
      lower external clock.
-  6. Enable WIFI_SLEEP_ENABLED to reduce Wi-Fi power draw. This can add latency or
-     lower throughput, so disable it again if streaming becomes unreliable.
+  6. Leave WIFI_SLEEP_ENABLED off while streaming. Enable it only if power draw
+     matters more than latency and throughput.
   7. Keep the NO_PSRAM values conservative. Boards without PSRAM should use lower
      frame sizes and a single frame buffer to avoid allocation failures.
 
@@ -140,8 +140,9 @@ constexpr uint32_t TARGET_FPS = 4;
 constexpr uint32_t FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
 
 // Possible values: true or false.
-// true enables Wi-Fi modem sleep to reduce power draw; false favors lower latency and throughput stability.
-constexpr bool WIFI_SLEEP_ENABLED = true;
+// Modem sleep is off by default because it adds latency and destabilizes continuous JPEG
+// streaming on this board. Set to true to trade streaming stability for lower Wi-Fi power draw.
+constexpr bool WIFI_SLEEP_ENABLED = false;
 
 // Possible values: milliseconds greater than 0; examples: 5000, 15000, 30000.
 // Maximum time to wait for Wi-Fi association before backing off and retrying.

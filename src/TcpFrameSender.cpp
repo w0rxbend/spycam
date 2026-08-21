@@ -23,8 +23,7 @@ void TcpFrameSender::begin()
 {
   serial_log::info("Initializing WiFi/TCP sender");
   WiFi.mode(WIFI_STA);
-  // WiFi.setSleep(app_config::WIFI_SLEEP_ENABLED);
-  WiFi.setSleep(false);
+  WiFi.setSleep(app_config::WIFI_SLEEP_ENABLED);
   WiFi.persistent(false);
   client_.setNoDelay(true);
   client_.setTimeout(app_config::SEND_TIMEOUT_MS / 1000);
