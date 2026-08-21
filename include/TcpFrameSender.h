@@ -6,10 +6,11 @@
 #include "esp_camera.h"
 
 #include "ByteSink.h"
+#include "SenderSettings.h"
 
 class TcpFrameSender {
 public:
-  TcpFrameSender(const char *host, uint16_t port);
+  explicit TcpFrameSender(const sender::Settings &settings);
 
   void begin();
   bool ensureConnected();
@@ -34,8 +35,7 @@ private:
   void waitBackoff();
   void resetBackoff();
 
-  const char *host_;
-  uint16_t port_;
+  sender::Settings settings_;
   WiFiClient client_;
   uint32_t sequence_;
   uint32_t backoffMs_;

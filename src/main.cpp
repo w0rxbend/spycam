@@ -9,9 +9,11 @@
 namespace
 {
 
-  CameraManager camera;
+  // Composition root: the only place that reads AppConfig.h and the only place
+  // that decides which concrete objects exist.
+  CameraManager cameraManager(app_config::cameraSettings());
   LatestFrameSlot latestFrame;
-  TcpFrameSender sender(app_config::SERVER_HOST, app_config::SERVER_PORT);
+  TcpFrameSender frameSender(app_config::senderSettings());
 
   void cameraTask(void *parameter)
   {
@@ -23,7 +25,7 @@ namespace
 
     for (;;)
     {
-      camera_fb_t *frame = camera.capture();
+      camera_fb_t *frame = cameraManager.capture();
       if (frame == nullptr)
       {
         ++captureFailures;
@@ -57,11 +59,11 @@ namespace
   void senderTask(void *parameter)
   {
     static_cast<void>(parameter);
-    sender.begin();
+    frameSender.begin();
 
     for (;;)
     {
-      if (!sender.ensureConnected())
+      if (!frameSender.ensureConnected())
       {
         continue;
       }
@@ -72,8 +74,8 @@ namespace
         continue;
       }
 
-      sender.sendFrame(frame);
-      camera.release(frame);
+      frameSender.sendFrame(frame);
+      cameraManager.release(frame);
     }
   }
 
@@ -99,7 +101,7 @@ void setup()
     ESP.restart();
   }
 
-  if (!camera.begin())
+  if (!cameraManager.begin())
   {
     serial_log::error("Failed to initialize camera");
     delay(1000);

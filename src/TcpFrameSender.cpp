@@ -1,6 +1,7 @@
 #include "TcpFrameSender.h"
 
-#include "AppConfig.h"
+#include <algorithm>
+
 #include "FrameWriter.h"
 #include "SerialLog.h"
 
@@ -8,11 +9,10 @@ namespace {
 constexpr size_t kSendChunkSize = 4096;
 }
 
-TcpFrameSender::TcpFrameSender(const char *host, uint16_t port)
-    : host_(host),
-      port_(port),
+TcpFrameSender::TcpFrameSender(const sender::Settings &settings)
+    : settings_(settings),
       sequence_(0),
-      backoffMs_(app_config::RECONNECT_BACKOFF_MIN_MS),
+      backoffMs_(settings.reconnectBackoffMinMs),
       sentFrames_(0),
       failedSends_(0),
       lastStatusAt_(0)
@@ -23,10 +23,10 @@ void TcpFrameSender::begin()
 {
   serial_log::info("Initializing WiFi/TCP sender");
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(app_config::WIFI_SLEEP_ENABLED);
+  WiFi.setSleep(settings_.wifiSleepEnabled);
   WiFi.persistent(false);
   client_.setNoDelay(true);
-  client_.setTimeout(app_config::SEND_TIMEOUT_MS / 1000);
+  client_.setTimeout(settings_.sendTimeoutMs / 1000);
   lastStatusAt_ = millis();
 }
 
@@ -57,7 +57,7 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
   meta.sequence = sequence_++;
   meta.payloadLen = static_cast<uint32_t>(frame->len);
   meta.timestampMs = millis();
-  meta.cameraId = app_config::CAMERA_ID;
+  meta.cameraId = settings_.cameraId;
 
   ClientSink sink(*this);
   const uint32_t startedAt = millis();
@@ -74,13 +74,13 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
   ++sentFrames_;
   resetBackoff();
   serial_log::debug("Sent frame camera=%lu seq=%lu bytes=%u elapsed=%lums",
-                    static_cast<unsigned long>(app_config::CAMERA_ID),
+                    static_cast<unsigned long>(settings_.cameraId),
                     static_cast<unsigned long>(sequence_ - 1),
                     static_cast<unsigned>(frame->len),
                     static_cast<unsigned long>(elapsed));
 
   const uint32_t now = millis();
-  if (now - lastStatusAt_ >= app_config::STATUS_LOG_INTERVAL_MS) {
+  if (now - lastStatusAt_ >= settings_.statusLogIntervalMs) {
     serial_log::info("Sender task: sent=%lu failed_sends=%lu last_seq=%lu wifi_rssi=%ld",
                      static_cast<unsigned long>(sentFrames_),
                      static_cast<unsigned long>(failedSends_),
@@ -89,10 +89,10 @@ bool TcpFrameSender::sendFrame(camera_fb_t *frame)
     lastStatusAt_ = now;
   }
 
-  if (elapsed > app_config::FRAME_INTERVAL_MS) {
+  if (elapsed > settings_.frameIntervalMs) {
     serial_log::warn("Sender is slower than capture interval (%lums > %lums); stale frames will be dropped",
                      static_cast<unsigned long>(elapsed),
-                     static_cast<unsigned long>(app_config::FRAME_INTERVAL_MS));
+                     static_cast<unsigned long>(settings_.frameIntervalMs));
   }
 
   return true;
@@ -114,10 +114,10 @@ bool TcpFrameSender::ensureWifiConnected()
   disconnect();
   serial_log::info("Connecting WiFi");
   WiFi.disconnect(false);
-  WiFi.begin(app_config::WIFI_SSID, app_config::WIFI_PASSWORD);
+  WiFi.begin(settings_.wifiSsid, settings_.wifiPassword);
 
   const uint32_t startedAt = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startedAt < app_config::WIFI_CONNECT_TIMEOUT_MS) {
+  while (WiFi.status() != WL_CONNECTED && millis() - startedAt < settings_.wifiConnectTimeoutMs) {
     vTaskDelay(pdMS_TO_TICKS(250));
   }
 
@@ -142,8 +142,8 @@ bool TcpFrameSender::ensureTcpConnected()
   }
 
   client_.stop();
-  serial_log::info("Connecting TCP %s:%u", host_, port_);
-  const bool connected = client_.connect(host_, port_, app_config::TCP_CONNECT_TIMEOUT_MS);
+  serial_log::info("Connecting TCP %s:%u", settings_.host, settings_.port);
+  const bool connected = client_.connect(settings_.host, settings_.port, settings_.tcpConnectTimeoutMs);
   if (!connected) {
     serial_log::warn("TCP connect failed");
     waitBackoff();
@@ -165,7 +165,7 @@ bool TcpFrameSender::sendAll(const uint8_t *data, size_t len)
       return false;
     }
 
-    if (millis() - startedAt > app_config::SEND_TIMEOUT_MS) {
+    if (millis() - startedAt > settings_.sendTimeoutMs) {
       serial_log::warn("TCP send timed out");
       return false;
     }
@@ -187,12 +187,12 @@ bool TcpFrameSender::sendAll(const uint8_t *data, size_t len)
 void TcpFrameSender::waitBackoff()
 {
   const uint32_t delayMs = backoffMs_;
-  backoffMs_ = min(backoffMs_ * 2, app_config::RECONNECT_BACKOFF_MAX_MS);
+  backoffMs_ = std::min(backoffMs_ * 2, settings_.reconnectBackoffMaxMs);
   serial_log::info("Reconnect backoff %lums", static_cast<unsigned long>(delayMs));
   vTaskDelay(pdMS_TO_TICKS(delayMs));
 }
 
 void TcpFrameSender::resetBackoff()
 {
-  backoffMs_ = app_config::RECONNECT_BACKOFF_MIN_MS;
+  backoffMs_ = settings_.reconnectBackoffMinMs;
 }

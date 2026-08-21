@@ -1,8 +1,11 @@
 #include "CameraManager.h"
 
-#include "AppConfig.h"
 #include "CameraPins.h"
 #include "SerialLog.h"
+
+CameraManager::CameraManager(const camera::Settings &settings) : settings_(settings)
+{
+}
 
 bool CameraManager::begin()
 {
@@ -27,12 +30,12 @@ bool CameraManager::begin()
   config.pin_sccb_scl = camera_pins::SIOC_GPIO_NUM;
   config.pin_pwdn = camera_pins::PWDN_GPIO_NUM;
   config.pin_reset = camera_pins::RESET_GPIO_NUM;
-  config.xclk_freq_hz = app_config::CAMERA_XCLK_FREQ_HZ;
+  config.xclk_freq_hz = settings_.xclkFreqHz;
   config.pixel_format = PIXFORMAT_JPEG;
   const bool hasPsram = psramFound();
-  config.frame_size = hasPsram ? app_config::CAMERA_FRAME_SIZE : app_config::CAMERA_FRAME_SIZE_NO_PSRAM;
-  config.jpeg_quality = app_config::CAMERA_JPEG_QUALITY;
-  config.fb_count = hasPsram ? app_config::CAMERA_FB_COUNT : app_config::CAMERA_FB_COUNT_NO_PSRAM;
+  config.frame_size = hasPsram ? settings_.frameSize : settings_.frameSizeNoPsram;
+  config.jpeg_quality = settings_.jpegQuality;
+  config.fb_count = hasPsram ? settings_.fbCount : settings_.fbCountNoPsram;
   config.grab_mode = CAMERA_GRAB_LATEST;
   config.fb_location = hasPsram ? CAMERA_FB_IN_PSRAM : CAMERA_FB_IN_DRAM;
 
@@ -51,12 +54,14 @@ bool CameraManager::begin()
   sensor_t *sensor = esp_camera_sensor_get();
   if (sensor != nullptr) {
     sensor->set_framesize(sensor, config.frame_size);
-    sensor->set_quality(sensor, app_config::CAMERA_JPEG_QUALITY);
-    const auto r = app_config::CAMERA_ROTATION;
-    sensor->set_vflip(sensor,
-      r == app_config::CameraRotation::FlipV || r == app_config::CameraRotation::Rotate180 ? 1 : 0);
-    sensor->set_hmirror(sensor,
-      r == app_config::CameraRotation::FlipH || r == app_config::CameraRotation::Rotate180 ? 1 : 0);
+    sensor->set_quality(sensor, settings_.jpegQuality);
+    const camera::Rotation rotation = settings_.rotation;
+    const bool flipVertically =
+      rotation == camera::Rotation::FlipV || rotation == camera::Rotation::Rotate180;
+    const bool mirrorHorizontally =
+      rotation == camera::Rotation::FlipH || rotation == camera::Rotation::Rotate180;
+    sensor->set_vflip(sensor, flipVertically ? 1 : 0);
+    sensor->set_hmirror(sensor, mirrorHorizontally ? 1 : 0);
   }
 
   serial_log::info("Camera ready: frame_size=%d quality=%d fb_count=%d psram=%s",
