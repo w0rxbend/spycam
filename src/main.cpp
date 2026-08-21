@@ -45,7 +45,12 @@ namespace
         lastStatusAt = now;
       }
 
-      vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(app_config::FRAME_INTERVAL_MS));
+      if (xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(app_config::FRAME_INTERVAL_MS)) == pdFALSE)
+      {
+        // The capture overran the period. Drop the backlog rather than
+        // free-running at full rate until the deadline catches up.
+        lastWake = xTaskGetTickCount();
+      }
     }
   }
 
@@ -77,12 +82,9 @@ namespace
 void setup()
 {
   serial_log::begin(app_config::SERIAL_BAUD, app_config::LOG_LEVEL);
-  delay(1000);
-  serial_log::info("ESP32-CAM TCP JPEG client starting");
-  delay(1000);
-  delay(1000);
-  serial_log::info("ESP32-CAM TCP JPEG client starting");
-  delay(1000);
+  // The AI-Thinker board has no USB-CDC; a host terminal reattaching after
+  // reset can miss the first bytes. One short settle beats losing the banner.
+  delay(500);
   serial_log::info("ESP32-CAM TCP JPEG client starting");
   serial_log::info("Target: tcp://%s:%u camera_id=%lu target_fps=%lu",
                    app_config::SERVER_HOST,
